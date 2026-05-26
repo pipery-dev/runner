@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pipery-dev/pipery-golang-ci@v1
+        with:
+          project_path: .
+          go_version: "1.22"
+          skip_release: true
+          registry: ghcr.io
+          image_name: ghcr.io/pipery-dev/runner

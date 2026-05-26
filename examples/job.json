@@ -1,0 +1,19 @@
+{
+  "jobDisplayName": "demo",
+  "variables": {
+    "CI": { "value": "true" },
+    "SECRET_TOKEN": { "value": "s3cr3t", "isSecret": true }
+  },
+  "maskHints": [
+    { "type": "MaskType.Regex", "value": "token-[0-9]+" }
+  ],
+  "steps": [
+    {
+      "displayName": "hello",
+      "inputs": {
+        "script": "echo \"hello from runner\"\necho \"secret is s3cr3t\"\necho \"::notice::finished\"",
+        "shell": "bash"
+      }
+    }
+  ]
+}

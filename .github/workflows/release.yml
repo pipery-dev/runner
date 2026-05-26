@@ -1,0 +1,25 @@
+name: Release Docker Image
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pipery-dev/pipery-golang-ci@v1
+        with:
+          project_path: .
+          go_version: "1.22"
+          skip_reintegration: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image_name: ghcr.io/pipery-dev/runner

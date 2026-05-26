@@ -1,0 +1,9 @@
+.git
+.runner
+.credentials
+.credentials_rsaparams
+dist
+_work
+*.log
+bin
+*.test
