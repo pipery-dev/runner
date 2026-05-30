@@ -66,6 +66,7 @@ jobs:
           image="ghcr.io/pipery-dev/runner:latest"
 
           mkdir -p "$workdir"
+          chmod 0777 "$workdir"
           docker pull "$image"
           docker run -d \
             --name "$container" \
