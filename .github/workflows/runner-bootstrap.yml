@@ -15,12 +15,12 @@ permissions:
   packages: read
 
 concurrency:
-  group: runner-bootstrap-${{ github.event.workflow_run.id }}
+  group: runner-bootstrap-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
   bootstrap:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
