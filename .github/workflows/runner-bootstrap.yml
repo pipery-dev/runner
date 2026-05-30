@@ -29,11 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runner_uuid="$(python3 - <<'PY'
-import uuid
-print(uuid.uuid4())
-PY
-)"
+          runner_uuid="$(python3 -c 'import uuid; print(uuid.uuid4())')"
           echo "runner_uuid=$runner_uuid" >> "$GITHUB_OUTPUT"
           echo "runner_label=uuid-$runner_uuid" >> "$GITHUB_OUTPUT"
           echo "runner_name=smoke-$runner_uuid" >> "$GITHUB_OUTPUT"
