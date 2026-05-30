@@ -23,3 +23,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           image_name: ghcr.io/pipery-dev/runner
+          release_docker_image: true
+          docker_push_latest: true

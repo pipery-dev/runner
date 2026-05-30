@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   go-ci:
@@ -21,3 +22,5 @@ jobs:
           skip_release: true
           registry: ghcr.io
           image_name: ghcr.io/pipery-dev/runner
+          release_docker_image: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          docker_push_latest: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
