@@ -20,6 +20,7 @@ jobs:
           project_path: .
           go_version: "1.22"
           skip_release: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           image_name: ghcr.io/pipery-dev/runner
           release_docker_image: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
