@@ -77,7 +77,8 @@ jobs:
             --token "$RUNNER_TOKEN" \
             --name "$RUNNER_NAME" \
             --labels "$RUNNER_LABEL" \
-            --ephemeral
+            --ephemeral \
+            --run
 
           echo "container=$container" >> "$GITHUB_OUTPUT"
           echo "workdir=$workdir" >> "$GITHUB_OUTPUT"
