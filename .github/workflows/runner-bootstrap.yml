@@ -1,0 +1,133 @@
+name: Runner Bootstrap Smoke Test
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: write
+  packages: read
+
+concurrency:
+  group: runner-bootstrap-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Generate runner identity
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_uuid="$(python3 - <<'PY'
+import uuid
+print(uuid.uuid4())
+PY
+)"
+          echo "runner_uuid=$runner_uuid" >> "$GITHUB_OUTPUT"
+          echo "runner_label=uuid-$runner_uuid" >> "$GITHUB_OUTPUT"
+          echo "runner_name=smoke-$runner_uuid" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        shell: bash
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Create runner registration token
+        id: registration
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" | jq -r '.token')"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Start released runner image
+        id: runner
+        env:
+          RUNNER_TOKEN: ${{ steps.registration.outputs.token }}
+          RUNNER_NAME: ${{ steps.meta.outputs.runner_name }}
+          RUNNER_LABEL: ${{ steps.meta.outputs.runner_label }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          workdir="$RUNNER_TEMP/runner-bootstrap-${GITHUB_RUN_ID}"
+          container="runner-bootstrap-${GITHUB_RUN_ID}"
+          image="ghcr.io/pipery-dev/runner:latest"
+
+          mkdir -p "$workdir"
+          docker pull "$image"
+          docker run -d \
+            --name "$container" \
+            -e HOME=/work \
+            -v "$workdir:/work" \
+            "$image" \
+            --url "https://github.com/${GITHUB_REPOSITORY}" \
+            --token "$RUNNER_TOKEN" \
+            --name "$RUNNER_NAME" \
+            --labels "$RUNNER_LABEL" \
+            --ephemeral
+
+          echo "container=$container" >> "$GITHUB_OUTPUT"
+          echo "workdir=$workdir" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for runner to come online
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUNNER_NAME: ${{ steps.meta.outputs.runner_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if gh api "repos/${GITHUB_REPOSITORY}/actions/runners" | jq -e --arg name "$RUNNER_NAME" '.runners[] | select(.name == $name and .status == "online")' >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Runner did not become online in time" >&2
+          exit 1
+
+      - name: Dispatch build workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUNNER_LABEL: ${{ steps.meta.outputs.runner_label }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/dispatches" \
+            -f event_type=runner-uuid-builds \
+            -f client_payload[runner_label]="$RUNNER_LABEL"
+
+      - name: Wait for build workflow to complete
+        env:
+          CONTAINER: ${{ steps.runner.outputs.container }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker wait "$CONTAINER"
+
+      - name: Show runner logs
+        if: always()
+        env:
+          CONTAINER: ${{ steps.runner.outputs.container }}
+        shell: bash
+        run: |
+          docker logs "$CONTAINER" || true
+
+      - name: Clean up runner container
+        if: always()
+        env:
+          CONTAINER: ${{ steps.runner.outputs.container }}
+        shell: bash
+        run: |
+          docker rm -f "$CONTAINER" >/dev/null 2>&1 || true

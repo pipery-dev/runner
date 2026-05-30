@@ -1,0 +1,50 @@
+name: Runner UUID Builds
+
+on:
+  repository_dispatch:
+    types:
+      - runner-uuid-builds
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-uuid-builds-${{ github.event.client_payload.runner_label }}
+  cancel-in-progress: false
+
+jobs:
+  random-builds:
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - ${{ github.event.client_payload.runner_label }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show target runner
+        shell: bash
+        run: echo "Running on ${{ github.event.client_payload.runner_label }}"
+
+      - name: Random Go builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          targets=(./... ./cmd/runner ./internal/job ./internal/listener ./internal/register ./internal/result ./internal/runner)
+          mapfile -t shuffled < <(printf '%s\n' "${targets[@]}" | shuf)
+          for target in "${shuffled[@]:0:4}"; do
+            echo "::group::go test $target"
+            go test "$target"
+            echo "::endgroup::"
+          done
+
+      - name: Random package build
+        shell: bash
+        run: |
+          set -euo pipefail
+          packages=(./cmd/runner ./internal/job ./internal/listener ./internal/register ./internal/result ./internal/runner)
+          pick="$(printf '%s\n' "${packages[@]}" | shuf -n 1)"
+          echo "::group::go build $pick"
+          go build "$pick"
+          echo "::endgroup::"
