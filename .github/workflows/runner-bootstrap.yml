@@ -41,10 +41,14 @@ jobs:
       - name: Create runner registration token
         id: registration
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RUNNER_ADMIN_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "RUNNER_ADMIN_TOKEN secret is required to create a runner registration token" >&2
+            exit 1
+          fi
           token="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" | jq -r '.token')"
           echo "token=$token" >> "$GITHUB_OUTPUT"
 
