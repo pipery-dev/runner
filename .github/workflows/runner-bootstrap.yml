@@ -91,6 +91,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Waiting for runner to initialize..."
+          sleep 15
           for _ in $(seq 1 60); do
             if gh api "repos/${GITHUB_REPOSITORY}/actions/runners" | jq -e --arg name "$RUNNER_NAME" '.runners[] | select(.name == $name and .status == "online")' >/dev/null; then
               exit 0
@@ -102,7 +104,8 @@ jobs:
           docker inspect "$CONTAINER" >&2 || true
           echo "Container logs:" >&2
           docker logs "$CONTAINER" >&2 || true
-          echo "Runner did not become online in time" >&2
+          echo "All runners:" >&2
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runners" | jq '.runners[] | {name, status}' >&2 || true
           exit 1
 
       - name: Dispatch build workflow
